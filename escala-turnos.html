@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Escala de Turnos</title>
+<style>
+  :root {
+    --bg: #F5F6F4; --surface: #FFFFFF; --surface-2: #ECEFE9;
+    --ink: #1C2620; --ink-soft: #55605A; --line: #D8DDD3;
+    --manha: #2F6E5C; --manha-bg: #E4F0EB;
+    --tarde: #B5651D; --tarde-bg: #F6E7D8;
+    --sunday: #C9CFC5; --accent: #2F6E5C; --danger: #A6402F;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141815; --surface: #1D2320; --surface-2: #232B26;
+      --ink: #EDEFEA; --ink-soft: #A6B0A8; --line: #333D36;
+      --manha: #6FBFA0; --manha-bg: #1F3730;
+      --tarde: #E0A25C; --tarde-bg: #3A2C1B;
+      --sunday: #2A312C; --accent: #6FBFA0; --danger: #E08A73;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141815; --surface: #1D2320; --surface-2: #232B26;
+    --ink: #EDEFEA; --ink-soft: #A6B0A8; --line: #333D36;
+    --manha: #6FBFA0; --manha-bg: #1F3730;
+    --tarde: #E0A25C; --tarde-bg: #3A2C1B;
+    --sunday: #2A312C; --accent: #6FBFA0; --danger: #E08A73;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.45; padding: 28px 16px 64px;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; }
+
+  @media (min-width: 1024px) {
+    body { padding: 40px 32px 80px; }
+    .wrap { max-width: 1280px; }
+    h1 { font-size: 2rem; }
+    .sub { font-size: 1rem; max-width: 75ch; }
+    h2 { font-size: 1.2rem; }
+    .section-note { font-size: 0.9rem; max-width: 85ch; }
+    table.pattern th, table.pattern td { padding: 13px 16px; font-size: 0.92rem; }
+    .field input[type="text"], .field select, .field input[type="date"] { font-size: 0.92rem; padding: 10px 12px; min-width: 170px; }
+    button { font-size: 0.88rem; padding: 10px 18px; height: 42px; }
+    .cal { gap: 12px; }
+    .day { min-height: 150px; padding: 14px 12px; border-radius: 12px; }
+    .day .date { font-size: 0.92rem; }
+    .shift-chip { font-size: 0.82rem; padding: 8px 9px; border-radius: 8px; }
+    .shift-chip .lbl { font-size: 0.72rem; }
+    .cal-head { font-size: 0.85rem; padding-bottom: 6px; }
+  }
+  header { margin-bottom: 28px; }
+  .kicker { font-size: 0.8rem; color: var(--ink-soft); margin: 0 0 6px; }
+  h1 { font-size: 1.6rem; font-weight: 650; margin: 0 0 8px; letter-spacing: -0.01em; }
+  .sub { color: var(--ink-soft); font-size: 0.92rem; max-width: 65ch; }
+  section { margin-bottom: 36px; }
+  h2 { font-size: 1.02rem; font-weight: 650; margin: 0 0 4px; }
+  .section-note { color: var(--ink-soft); font-size: 0.83rem; margin: 0 0 14px; max-width: 70ch; }
+  .legend { display: flex; gap: 18px; margin-top: 14px; flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; font-size: 0.85rem; color: var(--ink-soft); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .dot.manha { background: var(--manha); }
+  .dot.tarde { background: var(--tarde); }
+
+  .form-row {
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 16px;
+  }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 0.76rem; color: var(--ink-soft); font-weight: 600; }
+  .field input[type="text"], .field select, .field input[type="date"] {
+    font: inherit; font-size: 0.85rem; padding: 8px 10px;
+    border: 1px solid var(--line); border-radius: 7px;
+    background: var(--surface); color: var(--ink); min-width: 140px;
+  }
+  button {
+    font: inherit; font-size: 0.82rem; font-weight: 600;
+    padding: 9px 14px; border-radius: 8px; border: none;
+    background: var(--accent); color: #fff; cursor: pointer; height: 37px;
+  }
+  button:hover { filter: brightness(0.95); }
+  button.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); height: 30px; padding: 4px 10px; }
+
+  .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+  table.pattern { border-collapse: collapse; width: 100%; min-width: 480px; background: var(--surface); }
+  table.pattern th, table.pattern td {
+    padding: 10px 12px; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line);
+    text-align: left; font-size: 0.85rem; vertical-align: middle;
+  }
+  table.pattern th:last-child, table.pattern td:last-child { border-right: none; }
+  table.pattern tr:last-child td { border-bottom: none; }
+  table.pattern thead th { background: var(--surface-2); font-weight: 650; font-size: 0.78rem; color: var(--ink-soft); }
+  td.rm { width: 40px; text-align: center; }
+
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+  .cal-head { font-size: 0.72rem; color: var(--ink-soft); text-align: center; padding-bottom: 2px; }
+  .day {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 9px 7px; min-height: 100px; display: flex; flex-direction: column; gap: 5px;
+  }
+  .day.sunday { background: var(--sunday); border-style: dashed; }
+  .day.blank { background: transparent; border: none; }
+  .day .date { font-size: 0.76rem; font-weight: 650; color: var(--ink-soft); }
+  .shift-chip { font-size: 0.68rem; border-radius: 6px; padding: 4px 5px; line-height: 1.3; }
+  .shift-chip.manha { background: var(--manha-bg); color: var(--manha); }
+  .shift-chip.tarde { background: var(--tarde-bg); color: var(--tarde); }
+  .shift-chip .lbl { font-weight: 650; display: block; font-size: 0.62rem; margin-bottom: 1px; }
+  .day.sunday .note { font-size: 0.7rem; color: var(--ink-soft); margin-top: auto; }
+
+  @media (max-width: 640px) {
+    .cal { gap: 4px; }
+    .day { min-height: 80px; padding: 6px 4px; }
+    .shift-chip { font-size: 0.6rem; padding: 3px 4px; }
+    .cal-head { font-size: 0.58rem; }
+    .field input, .field select { min-width: 100px; }
+  }
+  .chip-head { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 1px; }
+  .chip-head .lbl { margin-bottom: 0; }
+  .edit-btn {
+    background: transparent; border: none; color: inherit; cursor: pointer;
+    font-size: 0.8rem; line-height: 1; padding: 2px 4px; height: auto; opacity: 0.6; border-radius: 4px;
+  }
+  .edit-btn:hover { opacity: 1; background: rgba(0,0,0,0.08); filter: none; }
+  .shift-chip.override { outline: 1.5px dashed currentColor; outline-offset: -1.5px; }
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none;
+    align-items: center; justify-content: center; padding: 16px; z-index: 50;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--surface); color: var(--ink); border-radius: 14px; padding: 20px;
+    width: 100%; max-width: 440px; max-height: 90vh; overflow-y: auto; border: 1px solid var(--line);
+  }
+  .modal h3 { margin: 0 0 4px; font-size: 1.05rem; }
+  .modal .modal-sub { color: var(--ink-soft); font-size: 0.82rem; margin: 0 0 14px; }
+  .check-list { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; margin-bottom: 14px; }
+  .check-list label { display: flex; align-items: center; gap: 7px; font-size: 0.88rem; cursor: pointer; }
+  .modal .field { margin-bottom: 14px; }
+  .modal .field input[type="text"] { width: 100%; }
+  .modal-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  button.secondary { background: var(--surface-2); color: var(--ink); border: 1px solid var(--line); }
+  footer { color: var(--ink-soft); font-size: 0.78rem; border-top: 1px solid var(--line); padding-top: 14px; margin-top: 8px; }
+  @media (min-width: 1024px) { .edit-btn { font-size: 0.95rem; } }
+  .footer-unused { }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <p class="kicker">Operação · Loja</p>
+    <h1>Escala de turnos</h1>
+    <p class="sub">Cadastre os operadores com a folga de cada um — o rodízio do mês é montado automaticamente, sem ninguém trabalhar no próprio dia de folga.</p>
+    <div class="legend">
+      <span><i class="dot manha"></i>Manhã · 07h–15:20</span>
+      <span><i class="dot tarde"></i>Tarde · 14h–22:20</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>Rodízio do mês</h2>
+    <p class="section-note">O rodízio gira sozinho: cada operador troca de par de dias em relação à semana anterior, sempre respeitando a própria folga. Domingo é montado manualmente: clique em ✎ para escolher quem trabalha, de acordo com a escala de trabalho.</p>
+
+    <div class="form-row">
+      <div class="field">
+        <label for="date-start">Início</label>
+        <input type="date" id="date-start">
+      </div>
+      <div class="field">
+        <label for="date-end">Fim</label>
+        <input type="date" id="date-end">
+      </div>
+      <div class="field">
+        <label for="date-rotation">Início da semana girada</label>
+        <input type="date" id="date-rotation">
+      </div>
+      <button id="btn-update">Atualizar</button>
+    </div>
+
+    <div class="cal" id="calendar"></div>
+  </section>
+
+  <section>
+    <h2>Cadastro de operadores</h2>
+    <p class="section-note">Domingo não entra no rodízio automático — ele é preenchido manualmente direto no calendário (botão ✎). Deixe "Nenhuma / não sei" se ainda não tiver essa informação — o operador entra no rodízio mesmo assim.</p>
+    <div class="form-row">
+      <div class="field">
+        <label for="inp-nome">Nome</label>
+        <input type="text" id="inp-nome" placeholder="Nome do operador">
+      </div>
+      <div class="field">
+        <label for="inp-turno">Turno</label>
+        <select id="inp-turno">
+          <option value="manha">Manhã</option>
+          <option value="tarde">Tarde</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="inp-folga">Folga</label>
+        <select id="inp-folga">
+          <option value="">Nenhuma / não sei</option>
+          <option value="seg">Segunda</option>
+          <option value="ter">Terça</option>
+          <option value="qua">Quarta</option>
+          <option value="qui">Quinta</option>
+          <option value="sex">Sexta</option>
+          <option value="sab">Sábado</option>
+        </select>
+      </div>
+      <button id="btn-add">+ Adicionar operador</button>
+    </div>
+
+    <div class="table-scroll">
+      <table class="pattern" id="tbl-operadores">
+        <thead><tr><th>Nome</th><th>Turno</th><th>Folga</th><th class="rm"></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    Cadastro salvo neste navegador. O rodízio é recalculado automaticamente sempre que você adiciona, remove ou edita um operador.
+  </footer>
+
+</div>
+
+<div class="modal-backdrop" id="modal-backdrop">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <h3 id="modal-title">Editar operadores</h3>
+    <p class="modal-sub" id="modal-sub"></p>
+    <div class="check-list" id="modal-checks"></div>
+    <div class="field">
+      <label for="modal-extra">Outros nomes (separados por vírgula)</label>
+      <input type="text" id="modal-extra" placeholder="Ex.: Fulano, Ciclano">
+    </div>
+    <div class="modal-actions">
+      <button id="modal-save">Salvar</button>
+      <button class="secondary" id="modal-auto">Voltar ao automático</button>
+      <button class="secondary" id="modal-cancel">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = "escala-turnos-v2";
+  const DAY_KEY_BY_GETDAY = ["dom","seg","ter","qua","qui","sex","sab"];
+  const DAY_LABEL = { seg:"Segunda", ter:"Terça", qua:"Quarta", qui:"Quinta", sex:"Sexta", sab:"Sábado", "":"—" };
+  const SLOTS = [
+    { id: 0, days: ["seg","qui"], label: "Segunda & Quinta" },
+    { id: 1, days: ["ter","sab"], label: "Terça & Sábado" },
+    { id: 2, days: ["qua","sex"], label: "Quarta & Sexta" }
+  ];
+
+  const defaultOperadores = [
+    { nome:"Nataniel", turno:"manha", folga:"" },
+    { nome:"Maria", turno:"manha", folga:"" },
+    { nome:"Deivison", turno:"manha", folga:"" },
+    { nome:"Vitória", turno:"manha", folga:"" },
+    { nome:"Matheus", turno:"manha", folga:"" },
+    { nome:"Andressa", turno:"manha", folga:"sex" },
+    { nome:"Lizandra", turno:"manha", folga:"" },
+    { nome:"Claudia", turno:"manha", folga:"" },
+    { nome:"Kamili", turno:"manha", folga:"" },
+    { nome:"Leonard", turno:"tarde", folga:"ter" },
+    { nome:"Bruna", turno:"tarde", folga:"ter" },
+    { nome:"Marcelo", turno:"tarde", folga:"qua" },
+    { nome:"Kaique", turno:"tarde", folga:"qua" },
+    { nome:"Jonas", turno:"tarde", folga:"sex" },
+    { nome:"Matheus C.", turno:"tarde", folga:"sex" },
+    { nome:"Talia", turno:"tarde", folga:"seg" },
+    { nome:"Juan", turno:"tarde", folga:"qui" },
+    { nome:"Alessandra", turno:"tarde", folga:"qui" }
+  ];
+
+  let state = null;
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) { console.error("Falha ao ler dados salvos:", e); }
+    return {
+      operadores: JSON.parse(JSON.stringify(defaultOperadores)),
+      dates: { start: "2026-09-21", end: "2026-09-30", rotation: "2026-09-28" }
+    };
+  }
+
+  function saveState() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    catch (e) { console.error("Falha ao salvar:", e); }
+  }
+
+  function slotIdForDayKey(dk) {
+    const s = SLOTS.find(s => s.days.includes(dk));
+    return s ? s.id : null;
+  }
+
+  // Calcula, para cada operador, em qual slot (par de dias) ele trabalha
+  // na semana 1 e na semana 2 (girada), respeitando a folga.
+  function computeAssignment(operadores) {
+    const result = operadores.map(op => ({ ...op }));
+    ["manha", "tarde"].forEach(turno => {
+      const grupo = result.filter(o => o.turno === turno);
+      const counts = { 0: 0, 1: 0, 2: 0 };
+      grupo.forEach(op => {
+        const excluded = op.folga ? slotIdForDayKey(op.folga) : null;
+        const validSlots = [0, 1, 2].filter(id => id !== excluded);
+        // semana 1: slot válido com menos gente até agora
+        let week1 = validSlots[0];
+        validSlots.forEach(id => { if (counts[id] < counts[week1]) week1 = id; });
+        counts[week1]++;
+        // semana 2: se só há 2 opções válidas, usa a outra; se há 3, usa a próxima do ciclo
+        let week2;
+        if (validSlots.length === 2) {
+          week2 = validSlots.find(id => id !== week1);
+        } else {
+          week2 = (week1 + 1) % 3;
+        }
+        op._week1 = week1;
+        op._week2 = week2;
+      });
+    });
+    return result;
+  }
+
+  function buildOperadoresTable() {
+    const tbody = document.querySelector("#tbl-operadores tbody");
+    tbody.innerHTML = "";
+    state.operadores.forEach((op, i) => {
+      const tr = document.createElement("tr");
+      const tdNome = document.createElement("td");
+      tdNome.textContent = op.nome;
+      const tdTurno = document.createElement("td");
+      tdTurno.textContent = op.turno === "manha" ? "Manhã" : "Tarde";
+      const tdFolga = document.createElement("td");
+      tdFolga.textContent = DAY_LABEL[op.folga] || "—";
+      const tdRm = document.createElement("td");
+      tdRm.className = "rm";
+      const btn = document.createElement("button");
+      btn.className = "danger";
+      btn.textContent = "×";
+      btn.addEventListener("click", () => {
+        state.operadores.splice(i, 1);
+        saveState();
+        buildOperadoresTable();
+        generateCalendar();
+      });
+      tdRm.appendChild(btn);
+      tr.appendChild(tdNome); tr.appendChild(tdTurno); tr.appendChild(tdFolga); tr.appendChild(tdRm);
+      tbody.appendChild(tr);
+    });
+  }
+
+  function generateCalendar() {
+    const startVal = document.getElementById("date-start").value;
+    const endVal = document.getElementById("date-end").value;
+    const rotVal = document.getElementById("date-rotation").value;
+    if (!startVal || !endVal) return;
+    state.dates = { start: startVal, end: endVal, rotation: rotVal || startVal };
+    saveState();
+
+    const assigned = computeAssignment(state.operadores);
+    const start = new Date(startVal + "T00:00:00");
+    const end = new Date(endVal + "T00:00:00");
+    const rotationStart = new Date((rotVal || startVal) + "T00:00:00");
+
+    const cal = document.getElementById("calendar");
+    cal.innerHTML = "";
+    ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].forEach(n => {
+      const h = document.createElement("div");
+      h.className = "cal-head";
+      h.textContent = n;
+      cal.appendChild(h);
+    });
+
+    const leadBlanks = start.getDay();
+    for (let i = 0; i < leadBlanks; i++) {
+      const b = document.createElement("div");
+      b.className = "day blank";
+      cal.appendChild(b);
+    }
+
+    let d = new Date(start);
+    while (d <= end) {
+      const dow = d.getDay();
+      const dk = DAY_KEY_BY_GETDAY[dow];
+      const cell = document.createElement("div");
+      cell.className = "day" + (dow === 0 ? " sunday" : "");
+
+      const dateEl = document.createElement("div");
+      dateEl.className = "date";
+      dateEl.textContent = d.getDate() + "/" + (d.getMonth() + 1) + (dow === 0 ? " · Domingo (manual)" : "");
+      cell.appendChild(dateEl);
+
+      {
+        const isSunday = dow === 0;
+        const slotId = isSunday ? null : slotIdForDayKey(dk);
+        const useWeek2 = d >= rotationStart;
+        ["manha", "tarde"].forEach(turno => {
+          const key = isoKey(d) + "|" + turno;
+          const hasOverride = Object.prototype.hasOwnProperty.call(state.overrides, key);
+          const nomes = hasOverride
+            ? state.overrides[key]
+            : (isSunday ? [] : assigned
+                .filter(o => o.turno === turno && (useWeek2 ? o._week2 : o._week1) === slotId)
+                .map(o => o.nome));
+          const chip = document.createElement("div");
+          chip.className = "shift-chip " + turno + (hasOverride ? " override" : "");
+
+          const head = document.createElement("div");
+          head.className = "chip-head";
+          const lbl = document.createElement("span");
+          lbl.className = "lbl";
+          lbl.textContent = turno === "manha" ? "Manhã" : "Tarde";
+          const btnEdit = document.createElement("button");
+          btnEdit.className = "edit-btn";
+          btnEdit.title = "Editar operadores";
+          btnEdit.textContent = "✎";
+          const dateSnapshot = new Date(d);
+          btnEdit.addEventListener("click", () => openEditor(dateSnapshot, turno, nomes));
+          head.appendChild(lbl);
+          head.appendChild(btnEdit);
+          chip.appendChild(head);
+
+          const names = document.createElement("div");
+          names.textContent = nomes.join(", ") || (isSunday ? "Definir manualmente" : "—");
+          chip.appendChild(names);
+          cell.appendChild(chip);
+        });
+      }
+      cal.appendChild(cell);
+      d.setDate(d.getDate() + 1);
+    }
+  }
+
+  function applyDateInputs() {
+    document.getElementById("date-start").value = state.dates.start;
+    document.getElementById("date-end").value = state.dates.end;
+    document.getElementById("date-rotation").value = state.dates.rotation;
+  }
+
+  document.getElementById("btn-add").addEventListener("click", () => {
+    const nome = document.getElementById("inp-nome").value.trim();
+    if (!nome) return;
+    const turno = document.getElementById("inp-turno").value;
+    const folga = document.getElementById("inp-folga").value;
+    state.operadores.push({ nome, turno, folga });
+    saveState();
+    document.getElementById("inp-nome").value = "";
+    buildOperadoresTable();
+    generateCalendar();
+  });
+
+  document.getElementById("btn-update").addEventListener("click", generateCalendar);
+
+  function isoKey(dt) {
+    const p = n => String(n).padStart(2, "0");
+    return dt.getFullYear() + "-" + p(dt.getMonth() + 1) + "-" + p(dt.getDate());
+  }
+
+  let editing = null; // { key, turno }
+
+  function openEditor(dt, turno, currentNames) {
+    editing = { key: isoKey(dt) + "|" + turno, turno };
+    const dias = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+    document.getElementById("modal-sub").textContent =
+      dias[dt.getDay()] + ", " + dt.getDate() + "/" + (dt.getMonth() + 1) + " — " + (turno === "manha" ? "Manhã" : "Tarde");
+
+    const registered = state.operadores.filter(o => o.turno === turno).map(o => o.nome);
+    const box = document.getElementById("modal-checks");
+    box.innerHTML = "";
+    registered.forEach(nome => {
+      const label = document.createElement("label");
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.value = nome;
+      cb.checked = currentNames.includes(nome);
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(nome));
+      box.appendChild(label);
+    });
+    const extras = currentNames.filter(n => !registered.includes(n));
+    document.getElementById("modal-extra").value = extras.join(", ");
+    document.getElementById("modal-backdrop").classList.add("open");
+  }
+
+  function closeEditor() {
+    document.getElementById("modal-backdrop").classList.remove("open");
+    editing = null;
+  }
+
+  document.getElementById("modal-save").addEventListener("click", () => {
+    if (!editing) return;
+    const checked = Array.from(document.querySelectorAll("#modal-checks input:checked")).map(c => c.value);
+    const extras = document.getElementById("modal-extra").value
+      .split(",").map(s => s.trim()).filter(Boolean);
+    state.overrides[editing.key] = checked.concat(extras);
+    saveState();
+    closeEditor();
+    generateCalendar();
+  });
+  document.getElementById("modal-auto").addEventListener("click", () => {
+    if (!editing) return;
+    delete state.overrides[editing.key];
+    saveState();
+    closeEditor();
+    generateCalendar();
+  });
+  document.getElementById("modal-cancel").addEventListener("click", closeEditor);
+  document.getElementById("modal-backdrop").addEventListener("click", e => {
+    if (e.target.id === "modal-backdrop") closeEditor();
+  });
+
+  state = loadState();
+  if (!state.overrides) state.overrides = {};
+  buildOperadoresTable();
+  applyDateInputs();
+  generateCalendar();
+</script>
+</body>
+</html>
